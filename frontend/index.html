@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CloudPulse | Website Intelligence</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #f5f7fb;
+            --surface: #ffffff;
+            --surface-soft: #f8fafc;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        }
+
+        body {
+            font-family:
+                Inter,
+                ui-sans-serif,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        button,
+        input {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* SIDEBAR */
+
+        .sidebar {
+            width: 245px;
+            background: #0f172a;
+            color: white;
+            padding: 25px 18px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 8px 10px 30px;
+        }
+
+        .brand-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: linear-gradient(
+                135deg,
+                #3b82f6,
+                #60a5fa
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 18px;
+        }
+
+        .brand-name {
+            font-size: 20px;
+            font-weight: 750;
+        }
+
+        .brand-name span {
+            color: #60a5fa;
+        }
+
+        .nav-title {
+            color: #94a3b8;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0 12px;
+            margin-bottom: 10px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 12px;
+            border-radius: 9px;
+            color: #cbd5e1;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .nav-item.active {
+            background: #1e293b;
+            color: white;
+        }
+
+        .nav-icon {
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-bottom {
+            margin-top: auto;
+            padding: 15px 10px 5px;
+            color: #94a3b8;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        /* MAIN */
+
+        .main {
+            margin-left: 245px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .topbar {
+            height: 72px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 35px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .topbar-title h1 {
+            font-size: 19px;
+            font-weight: 700;
+        }
+
+        .topbar-title p {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .content {
+            max-width: 1450px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+
+        /* HERO */
+
+        .hero {
+            background:
+                linear-gradient(
+                    135deg,
+                    #0f172a 0%,
+                    #172554 55%,
+                    #1d4ed8 100%
+                );
+
+            border-radius: 20px;
+            padding: 34px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+
+        .hero::after {
+            content: "";
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            right: -100px;
+            top: -150px;
+            border: 50px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 780px;
+        }
+
+        .hero-label {
+            color: #93c5fd;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 10px;
+        }
+
+        .hero h2 {
+            font-size: 31px;
+            line-height: 1.2;
+            margin-bottom: 10px;
+        }
+
+        .hero p {
+            color: #cbd5e1;
+            font-size: 14px;
+            line-height: 1.7;
+            max-width: 680px;
+            margin-bottom: 23px;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 10px;
+            max-width: 760px;
+        }
+
+        .search-row input {
+            flex: 1;
+            min-width: 0;
+            background: white;
+            border: none;
+            border-radius: 10px;
+            padding: 14px 16px;
+            color: var(--text);
+            outline: none;
+        }
+
+        .search-row input::placeholder {
+            color: #94a3b8;
+        }
+
+        .primary-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0 22px;
+            font-weight: 700;
+            transition: 0.2s;
+        }
+
+        .primary-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .primary-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* MESSAGE */
+
+        .message {
+            display: none;
+            margin-top: 14px;
+            padding: 11px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* SECTION */
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .section-header h2 {
+            font-size: 19px;
+        }
+
+        .section-header p {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        /* ANALYSIS */
+
+        .analysis-section {
+            display: none;
+            margin-bottom: 28px;
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+        }
+
+        .metric-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: var(--shadow);
+        }
+
+        .metric-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: #eff6ff;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 13px;
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+        .metric-label {
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 7px;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: 750;
+            word-break: break-word;
+        }
+
+        .metric-small {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .analysis-footer {
+            margin-top: 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .analysis-url {
+            min-width: 0;
+        }
+
+        .analysis-url strong {
+            font-size: 14px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .analysis-url span {
+            color: var(--muted);
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .secondary-btn,
+        .success-btn {
+            border: none;
+            border-radius: 9px;
+            padding: 11px 16px;
+            color: white;
+            font-weight: 700;
+        }
+
+        .secondary-btn {
+            background: #0f172a;
+        }
+
+        .success-btn {
+            background: var(--success);
+        }
+
+        /* DASHBOARD */
+
+        .dashboard-section {
+            margin-top: 25px;
+        }
+
+        .monitor-list {
+            display: grid;
+            gap: 16px;
+        }
+
+        .empty-state {
+            background: var(--surface);
+            border: 1px dashed #cbd5e1;
+            border-radius: 15px;
+            padding: 38px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .monitor-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: var(--shadow);
+        }
+
+        .monitor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 18px;
+        }
+
+        .monitor-info {
+            min-width: 0;
+        }
+
+        .monitor-url {
+            font-size: 17px;
+            font-weight: 750;
+            word-break: break-all;
+        }
+
+        .monitor-added {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .status-badge {
+            padding: 7px 11px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .status-healthy {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-degraded {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-down {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-unknown {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+        }
+
+        .stat-box {
+            background: var(--surface-soft);
+            border-radius: 10px;
+            padding: 13px;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 750;
+        }
+
+        .monitor-bottom {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 18px;
+            margin-top: 18px;
+            align-items: end;
+        }
+
+        .history-title {
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 9px;
+        }
+
+        .chart {
+            height: 90px;
+            background: var(--surface-soft);
+            border-radius: 10px;
+            padding: 10px;
+            display: flex;
+            align-items: end;
+            gap: 5px;
+            overflow-x: auto;
+        }
+
+        .bar {
+            width: 15px;
+            min-width: 15px;
+            border-radius: 4px 4px 2px 2px;
+            background: #3b82f6;
+        }
+
+        .monitor-action {
+            min-width: 110px;
+        }
+
+        .monitor-action button {
+            width: 100%;
+            border: none;
+            background: #0f172a;
+            color: white;
+            border-radius: 9px;
+            padding: 11px 14px;
+            font-weight: 700;
+        }
+
+        .monitor-action button:hover {
+            background: #1e293b;
+        }
+
+        /* FOOTER */
+
+        footer {
+            text-align: center;
+            padding: 30px 20px 20px;
+            color: #94a3b8;
+            font-size: 11px;
+        }
+
+        /* RESPONSIVE */
+
+        @media (max-width: 1100px) {
+
+            .sidebar {
+                width: 210px;
+            }
+
+            .main {
+                margin-left: 210px;
+            }
+
+            .analysis-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .stats-row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 760px) {
+
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                margin-left: 0;
+            }
+
+            .topbar {
+                padding: 0 20px;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .hero {
+                padding: 25px;
+            }
+
+            .hero h2 {
+                font-size: 25px;
+            }
+
+            .search-row {
+                flex-direction: column;
+            }
+
+            .primary-btn {
+                height: 46px;
+            }
+
+            .analysis-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .analysis-footer {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .analysis-footer button {
+                width: 100%;
+            }
+
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .monitor-header {
+                flex-direction: column;
+            }
+
+            .monitor-bottom {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .topbar-title h1 {
+                font-size: 16px;
+            }
+
+            .system-status {
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar">
+
+        <div class="brand">
+            <div class="brand-icon">CP</div>
+
+            <div class="brand-name">
+                Cloud<span>Pulse</span>
+            </div>
+        </div>
+
+        <div class="nav-title">
+            Workspace
+        </div>
+
+        <div class="nav-item active">
+            <div class="nav-icon">◉</div>
+            Dashboard
+        </div>
+
+        <div class="nav-item">
+            <div class="nav-icon">⌁</div>
+            Website Intelligence
+        </div>
+
+        <div class="nav-item">
+            <div class="nav-icon">◷</div>
+            Monitoring
+        </div>
+
+        <div class="sidebar-bottom">
+            CloudPulse<br>
+            Website Intelligence & Monitoring Platform
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN -->
+
+    <main class="main">
+
+        <header class="topbar">
+
+            <div class="topbar-title">
+                <h1>Monitoring Dashboard</h1>
+                <p>Real-time website intelligence and health checks</p>
+            </div>
+
+            <div class="system-status">
+                <div class="status-dot"></div>
+                System Operational
+            </div>
+
+        </header>
+
+
+        <div class="content">
+
+            <!-- HERO -->
+
+            <section class="hero">
+
+                <div class="hero-content">
+
+                    <div class="hero-label">
+                        CloudPulse Intelligence
+                    </div>
+
+                    <h2>
+                        Understand the health of any public website.
+                    </h2>
+
+                    <p>
+                        Analyze technical website information,
+                        measure response performance and add websites
+                        to continuous monitoring.
+                    </p>
+
+                    <div class="search-row">
+
+                        <input
+                            type="text"
+                            id="urlInput"
+                            placeholder="Enter website URL  •  example.com"
+                        >
+
+                        <button
+                            id="analyzeButton"
+                            class="primary-btn"
+                            onclick="analyzeWebsite()"
+                        >
+                            Analyze Website
+                        </button>
+
+                    </div>
+
+                    <div
+                        id="message"
+                        class="message"
+                    ></div>
+
+                </div>
+
+            </section>
+
+
+            <!-- ANALYSIS -->
+
+            <section
+                id="analysisSection"
+                class="analysis-section"
+            >
+
+                <div class="section-header">
+                    <div>
+                        <h2>Website Analysis</h2>
+                        <p>Technical information collected from the target website</p>
+                    </div>
+                </div>
+
+                <div class="analysis-grid">
+
+                    <div class="metric-card">
+
+                        <div class="metric-icon">
+                            HTTP
+                        </div>
+
+                        <div class="metric-label">
+                            HTTP Status
+                        </div>
+
+                        <div
+                            class="metric-value"
+                            id="statusCode"
+                        >
+                            -
+                        </div>
+
+                    </div>
+
+
+                    <div class="metric-card">
+
+                        <div class="metric-icon">
+                            MS
+                        </div>
+
+                        <div class="metric-label">
+                            Response Time
+                        </div>
+
+                        <div
+                            class="metric-value"
+                            id="responseTime"
+                        >
+                            -
+                        </div>
+
+                        <div class="metric-small">
+                            Network response latency
+                        </div>
+
+                    </div>
+
+
+                    <div class="metric-card">
+
+                        <div class="metric-icon">
+                            SSL
+                        </div>
+
+                        <div class="metric-label">
+                            HTTPS
+                        </div>
+
+                        <div
+                            class="metric-value"
+                            id="httpsStatus"
+                        >
+                            -
+                        </div>
+
+                    </div>
+
+
+                    <div class="metric-card">
+
+                        <div class="metric-icon">
+                            WEB
+                        </div>
+
+                        <div class="metric-label">
+                            Content Type
+                        </div>
+
+                        <div
+                            class="metric-value"
+                            id="contentType"
+                        >
+                            -
+                        </div>
+
+                    </div>
+
+
+                    <div class="metric-card">
+
+                        <div class="metric-icon">
+                            TXT
+                        </div>
+
+                        <div class="metric-label">
+                            Page Title
+                        </div>
+
+                        <div
+                            class="metric-value"
+                            id="pageTitle"
+                        >
+                            -
+                        </div>
+
+                    </div>
+
+
+                    <div class="metric-card">
+
+                        <div class="metric-icon">
+                            URL
+                        </div>
+
+                        <div class="metric-label">
+                            Analyzed URL
+                        </div>
+
+                        <div
+                            class="metric-value"
+                            id="analyzedUrl"
+                        >
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="analysis-footer">
+
+                    <div class="analysis-url">
+
+                        <strong>
+                            Continuous Monitoring
+                        </strong>
+
+                        <span>
+                            Save this website and track response
+                            performance over time.
+                        </span>
+
+                    </div>
+
+                    <button
+                        id="monitorButton"
+                        class="success-btn"
+                        onclick="addCurrentWebsite()"
+                    >
+                        Add to Monitoring
+                    </button>
+
+                </div>
+
+            </section>
+
+
+            <!-- DASHBOARD -->
+
+            <section class="dashboard-section">
+
+                <div class="section-header">
+
+                    <div>
+                        <h2>Monitored Websites</h2>
+
+                        <p>
+                            Website health, uptime and response performance
+                        </p>
+                    </div>
+
+                </div>
+
+                <div
+                    id="monitorList"
+                    class="monitor-list"
+                >
+
+                    <div class="empty-state">
+                        Loading monitored websites...
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <footer>
+                CloudPulse • Website Intelligence & Monitoring Platform
+            </footer>
+
+        </div>
+
+    </main>
+
+</div>
+
+
+<script>
+
+    let currentAnalyzedUrl = "";
+
+
+    function showMessage(message, type = "info") {
+
+        const element =
+            document.getElementById("message");
+
+        element.textContent = message;
+        element.style.display = "block";
+
+        if (type === "error") {
+
+            element.style.background = "#fee2e2";
+            element.style.color = "#991b1b";
+
+        } else {
+
+            element.style.background = "#dbeafe";
+            element.style.color = "#1e40af";
+        }
+    }
+
+
+    function normalizeUrl(url) {
+
+        url = url.trim();
+
+        if (
+            !url.startsWith("http://") &&
+            !url.startsWith("https://")
+        ) {
+            url = "https://" + url;
+        }
+
+        return url;
+    }
+
+
+    async function analyzeWebsite() {
+
+        const input =
+            document.getElementById("urlInput");
+
+        const button =
+            document.getElementById("analyzeButton");
+
+        if (!input.value.trim()) {
+
+            showMessage(
+                "Please enter a website URL.",
+                "error"
+            );
+
+            return;
+        }
+
+        const url =
+            normalizeUrl(input.value);
+
+        button.disabled = true;
+        button.textContent = "Analyzing...";
+
+
+        try {
+
+            const response =
+                await fetch("/analyze", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        url: url
+                    })
+                });
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.detail ||
+                    "Could not analyze website."
+                );
+            }
+
+
+            currentAnalyzedUrl =
+                data.url;
+
+
+            document
+                .getElementById("statusCode")
+                .textContent =
+                data.status_code;
+
+
+            document
+                .getElementById("responseTime")
+                .textContent =
+                data.response_time_seconds + " s";
+
+
+            document
+                .getElementById("httpsStatus")
+                .textContent =
+                data.https
+                    ? "Enabled"
+                    : "Not Enabled";
+
+
+            document
+                .getElementById("contentType")
+                .textContent =
+                data.content_type;
+
+
+            document
+                .getElementById("pageTitle")
+                .textContent =
+                data.page_title;
+
+
+            document
+                .getElementById("analyzedUrl")
+                .textContent =
+                data.url;
+
+
+            document
+                .getElementById("analysisSection")
+                .style.display =
+                "block";
+
+
+            showMessage(
+                "Website analysis completed successfully."
+            );
+
+        } catch (error) {
+
+            showMessage(
+                error.message ||
+                "Could not analyze website.",
+                "error"
+            );
+
+        } finally {
+
+            button.disabled = false;
+            button.textContent =
+                "Analyze Website";
+        }
+    }
+
+
+    async function addCurrentWebsite() {
+
+        if (!currentAnalyzedUrl) {
+
+            showMessage(
+                "Analyze a website first.",
+                "error"
+            );
+
+            return;
+        }
+
+
+        const button =
+            document.getElementById(
+                "monitorButton"
+            );
+
+
+        button.disabled = true;
+        button.textContent = "Adding...";
+
+
+        try {
+
+            const response =
+                await fetch("/monitor", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        url: currentAnalyzedUrl
+                    })
+                });
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.detail ||
+                    "Could not add website."
+                );
+            }
+
+
+            showMessage(
+                data.message
+            );
+
+
+            await loadMonitors();
+
+
+        } catch (error) {
+
+            showMessage(
+                error.message ||
+                "Could not add website.",
+                "error"
+            );
+
+        } finally {
+
+            button.disabled = false;
+            button.textContent =
+                "Add to Monitoring";
+        }
+    }
+
+
+    function getStatusClass(status) {
+
+        if (status === "Healthy") {
+            return "status-healthy";
+        }
+
+        if (status === "Degraded") {
+            return "status-degraded";
+        }
+
+        if (status === "Down") {
+            return "status-down";
+        }
+
+        return "status-unknown";
+    }
+
+
+    async function loadMonitors() {
+
+        const container =
+            document.getElementById(
+                "monitorList"
+            );
+
+
+        try {
+
+            const response =
+                await fetch("/monitors");
+
+
+            const data =
+                await response.json();
+
+
+            if (
+                !data.monitors ||
+                data.monitors.length === 0
+            ) {
+
+                container.innerHTML = `
+                    <div class="empty-state">
+                        No monitored websites yet.
+                        Analyze a website above and add it
+                        to monitoring.
+                    </div>
+                `;
+
+                return;
+            }
+
+
+            container.innerHTML = "";
+
+
+            for (const monitor of data.monitors) {
+
+                const card =
+                    document.createElement("div");
+
+                card.className =
+                    "monitor-card";
+
+
+                card.innerHTML = `
+
+                    <div class="monitor-header">
+
+                        <div class="monitor-info">
+
+                            <div class="monitor-url">
+                                ${escapeHtml(monitor.url)}
+                            </div>
+
+                            <div class="monitor-added">
+                                Added ${formatDate(monitor.created_at)}
+                            </div>
+
+                        </div>
+
+                        <div
+                            id="status-${monitor.id}"
+                            class="status-badge status-unknown"
+                        >
+                            Loading
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        id="stats-${monitor.id}"
+                        class="stats-row"
+                    >
+
+                        ${statPlaceholder("Uptime")}
+                        ${statPlaceholder("Checks")}
+                        ${statPlaceholder("Successful")}
+                        ${statPlaceholder("Failed")}
+                        ${statPlaceholder("Avg Response")}
+                        ${statPlaceholder("Last Response")}
+
+                    </div>
+
+
+                    <div class="monitor-bottom">
+
+                        <div>
+
+                            <div class="history-title">
+                                Response Time History
+                            </div>
+
+                            <div
+                                id="history-${monitor.id}"
+                                class="chart"
+                            >
+                                <span style="
+                                    color:#94a3b8;
+                                    font-size:11px;
+                                    align-self:center;
+                                ">
+                                    Loading history...
+                                </span>
+                            </div>
+
+                        </div>
+
+
+                        <div class="monitor-action">
+
+                            <button
+                                onclick="runCheck(${monitor.id})"
+                            >
+                                Run Check
+                            </button>
+
+                        </div>
+
+                    </div>
+                `;
+
+
+                container.appendChild(card);
+
+
+                loadMonitorData(
+                    monitor.id
+                );
+            }
+
+
+        } catch (error) {
+
+            container.innerHTML = `
+                <div class="empty-state">
+                    Could not load monitored websites.
+                </div>
+            `;
+        }
+    }
+
+
+    function statPlaceholder(label) {
+
+        return `
+            <div class="stat-box">
+
+                <div class="stat-label">
+                    ${label}
+                </div>
+
+                <div class="stat-value">
+                    -
+                </div>
+
+            </div>
+        `;
+    }
+
+
+    async function loadMonitorData(id) {
+
+        try {
+
+            const statsResponse =
+                await fetch(
+                    `/monitors/${id}/stats`
+                );
+
+
+            const stats =
+                await statsResponse.json();
+
+
+            if (!statsResponse.ok) {
+                return;
+            }
+
+
+            const statusElement =
+                document.getElementById(
+                    `status-${id}`
+                );
+
+
+            statusElement.textContent =
+                stats.current_status;
+
+
+            statusElement.className =
+                `status-badge ${getStatusClass(
+                    stats.current_status
+                )}`;
+
+
+            const statsElement =
+                document.getElementById(
+                    `stats-${id}`
+                );
+
+
+            statsElement.innerHTML = `
+
+                <div class="stat-box">
+
+                    <div class="stat-label">
+                        Uptime
+                    </div>
+
+                    <div class="stat-value">
+                        ${stats.uptime_percentage}%
+                    </div>
+
+                </div>
+
+
+                <div class="stat-box">
+
+                    <div class="stat-label">
+                        Checks
+                    </div>
+
+                    <div class="stat-value">
+                        ${stats.total_checks}
+                    </div>
+
+                </div>
+
+
+                <div class="stat-box">
+
+                    <div class="stat-label">
+                        Successful
+                    </div>
+
+                    <div class="stat-value">
+                        ${stats.successful_checks}
+                    </div>
+
+                </div>
+
+
+                <div class="stat-box">
+
+                    <div class="stat-label">
+                        Failed
+                    </div>
+
+                    <div class="stat-value">
+                        ${stats.failed_checks}
+                    </div>
+
+                </div>
+
+
+                <div class="stat-box">
+
+                    <div class="stat-label">
+                        Avg Response
+                    </div>
+
+                    <div class="stat-value">
+                        ${stats.average_response_time_ms} ms
+                    </div>
+
+                </div>
+
+
+                <div class="stat-box">
+
+                    <div class="stat-label">
+                        Last Response
+                    </div>
+
+                    <div class="stat-value">
+                        ${
+                            stats.last_check
+                                ? stats.last_check.response_time_ms + " ms"
+                                : "-"
+                        }
+                    </div>
+
+                </div>
+            `;
+
+
+            const historyResponse =
+                await fetch(
+                    `/monitors/${id}/checks`
+                );
+
+
+            const historyData =
+                await historyResponse.json();
+
+
+            if (
+                historyResponse.ok &&
+                historyData.checks &&
+                historyData.checks.length
+            ) {
+
+                renderHistory(
+                    id,
+                    historyData.checks
+                );
+
+            } else {
+
+                renderEmptyHistory(id);
+            }
+
+
+        } catch (error) {
+
+            console.error(
+                "Monitor data error:",
+                error
+            );
+        }
+    }
+
+
+    function renderHistory(id, checks) {
+
+        const container =
+            document.getElementById(
+                `history-${id}`
+            );
+
+
+        const recentChecks =
+            [...checks]
+                .reverse()
+                .slice(-20);
+
+
+        const maxResponse =
+            Math.max(
+                ...recentChecks.map(
+                    check =>
+                        check.response_time_ms || 1
+                )
+            );
+
+
+        container.innerHTML =
+            recentChecks.map(
+                check => {
+
+                    const value =
+                        check.response_time_ms || 1;
+
+
+                    const height =
+                        Math.max(
+                            10,
+                            (value /
+                                maxResponse) *
+                                100
+                        );
+
+
+                    return `
+                        <div
+                            class="bar"
+                            title="${value} ms"
+                            style="height:${height}%"
+                        ></div>
+                    `;
+
+                }
+            ).join("");
+    }
+
+
+    function renderEmptyHistory(id) {
+
+        const container =
+            document.getElementById(
+                `history-${id}`
+            );
+
+
+        container.innerHTML = `
+            <span style="
+                color:#94a3b8;
+                font-size:11px;
+                align-self:center;
+            ">
+                No checks recorded yet
+            </span>
+        `;
+    }
+
+
+    async function runCheck(id) {
+
+        showMessage(
+            "Running website health check..."
+        );
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `/monitors/${id}/check`,
+                    {
+                        method: "POST"
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.detail ||
+                    "Check failed."
+                );
+            }
+
+
+            showMessage(
+                `Check completed successfully • HTTP ${
+                    data.status_code || "Unavailable"
+                }`
+            );
+
+
+            await loadMonitorData(id);
+
+
+        } catch (error) {
+
+            showMessage(
+                error.message ||
+                "Could not complete website check.",
+                "error"
+            );
+        }
+    }
+
+
+    function escapeHtml(value) {
+
+        return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+
+    function formatDate(dateString) {
+
+        const date =
+            new Date(dateString);
+
+
+        if (Number.isNaN(date.getTime())) {
+            return "recently";
+        }
+
+
+        return date.toLocaleString(
+            undefined,
+            {
+                dateStyle: "medium",
+                timeStyle: "short"
+            }
+        );
+    }
+
+
+    document
+        .getElementById("urlInput")
+        .addEventListener(
+            "keydown",
+            function(event) {
+
+                if (event.key === "Enter") {
+                    analyzeWebsite();
+                }
+
+            }
+        );
+
+
+    loadMonitors();
+
+</script>
+
+</body>
+</html>
