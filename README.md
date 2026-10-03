@@ -174,7 +174,20 @@ Security Note
 CloudPulse accepts user-supplied URLs, which introduces potential Server-Side Request Forgery (SSRF) risks.
 The current implementation is intended for local development and portfolio demonstration. A production deployment should validate requested destinations and prevent access to localhost, private/internal networks, and other restricted destinations.
 Screenshots
-Screenshots of the CloudPulse dashboard and monitoring interface will be added here after the final deployment and project demonstration.
+## Screenshots
+
+
+### CloudPulse Dashboard
+
+![CloudPulse Dashboard](screenshots/dashboard.png)
+
+### Website Monitoring
+
+![CloudPulse Monitoring](screenshots/monitoring.png)
+
+### FastAPI Documentation
+
+![CloudPulse API Documentation](screenshots/api-docs.png)
 Author
 Matinoddin Farooqui
 GitHub: MatinFarooqui
