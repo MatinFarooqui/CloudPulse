@@ -6,10 +6,10 @@ import httpx
 from bs4 import BeautifulSoup
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from fastapi.responses import FileResponse
 
 from backend.database.database import get_connection
 
-from fastapi.responses import FileResponse
 
 app = FastAPI()
 
@@ -125,9 +125,59 @@ def add_to_monitor(request: MonitorRequest):
 
         cursor.execute(
             """
+            SELECT id, is_active
+            FROM websites
+            WHERE url = %s;
+            """,
+            (url,)
+        )
+
+        existing = cursor.fetchone()
+
+        if existing:
+
+            website_id = existing[0]
+            is_active = existing[1]
+
+            if is_active:
+
+                cursor.close()
+                conn.close()
+
+                return {
+                    "message": "Website is already being monitored",
+                    "id": website_id,
+                    "url": url,
+                    "is_active": True
+                }
+
+            cursor.execute(
+                """
+                UPDATE websites
+                SET is_active = TRUE
+                WHERE id = %s
+                RETURNING id, url, created_at, is_active;
+                """,
+                (website_id,)
+            )
+
+            result = cursor.fetchone()
+
+            conn.commit()
+            cursor.close()
+
+            return {
+                "message": "Website added back to monitoring",
+                "id": result[0],
+                "url": result[1],
+                "created_at": result[2],
+                "is_active": result[3]
+            }
+
+        cursor.execute(
+            """
             INSERT INTO websites (url)
             VALUES (%s)
-            ON CONFLICT (url) DO NOTHING
             RETURNING id, url, created_at, is_active;
             """,
             (url,)
@@ -138,12 +188,6 @@ def add_to_monitor(request: MonitorRequest):
         conn.commit()
         cursor.close()
 
-        if result is None:
-            return {
-                "message": "Website is already being monitored",
-                "url": url
-            }
-
         return {
             "message": "Website added to monitoring",
             "id": result[0],
@@ -153,6 +197,7 @@ def add_to_monitor(request: MonitorRequest):
         }
 
     except Exception:
+
         if conn:
             conn.rollback()
 
@@ -162,6 +207,7 @@ def add_to_monitor(request: MonitorRequest):
         )
 
     finally:
+
         if conn:
             conn.close()
 
@@ -179,6 +225,7 @@ def get_monitors():
             """
             SELECT id, url, created_at, is_active
             FROM websites
+            WHERE is_active = TRUE
             ORDER BY created_at DESC;
             """
         )
@@ -190,6 +237,7 @@ def get_monitors():
         monitors = []
 
         for row in rows:
+
             monitors.append({
                 "id": row[0],
                 "url": row[1],
@@ -202,12 +250,14 @@ def get_monitors():
         }
 
     except Exception:
+
         raise HTTPException(
             status_code=500,
             detail="Could not retrieve monitored websites."
         )
 
     finally:
+
         if conn:
             conn.close()
 
@@ -218,6 +268,7 @@ def check_website(website_id: int):
     conn = None
 
     try:
+
         conn = get_connection()
         cursor = conn.cursor()
 
@@ -233,6 +284,7 @@ def check_website(website_id: int):
         website = cursor.fetchone()
 
         if website is None:
+
             raise HTTPException(
                 status_code=404,
                 detail="Website not found."
@@ -243,6 +295,7 @@ def check_website(website_id: int):
         start_time = time.perf_counter()
 
         try:
+
             response = httpx.get(
                 url,
                 follow_redirects=True,
@@ -255,19 +308,24 @@ def check_website(website_id: int):
                 (end_time - start_time) * 1000
             )
 
-            is_successful = response.status_code < 400
             status_code = response.status_code
+
+            is_successful = status_code < 500
+
             error_message = None
 
         except httpx.RequestError as error:
+
             end_time = time.perf_counter()
 
             response_time_ms = round(
                 (end_time - start_time) * 1000
             )
 
-            is_successful = False
             status_code = None
+
+            is_successful = False
+
             error_message = str(error)
 
         cursor.execute(
@@ -294,6 +352,7 @@ def check_website(website_id: int):
         check = cursor.fetchone()
 
         conn.commit()
+
         cursor.close()
 
         return {
@@ -307,9 +366,11 @@ def check_website(website_id: int):
         }
 
     except HTTPException:
+
         raise
 
     except Exception:
+
         if conn:
             conn.rollback()
 
@@ -319,8 +380,10 @@ def check_website(website_id: int):
         )
 
     finally:
+
         if conn:
             conn.close()
+
 
 @app.get("/monitors/{website_id}/checks")
 def get_monitoring_history(website_id: int):
@@ -328,13 +391,18 @@ def get_monitoring_history(website_id: int):
     conn = None
 
     try:
+
         conn = get_connection()
         cursor = conn.cursor()
 
         cursor.execute(
             """
-            SELECT id, checked_at, status_code,
-                   response_time_ms, is_successful, error_message
+            SELECT id,
+                   checked_at,
+                   status_code,
+                   response_time_ms,
+                   is_successful,
+                   error_message
             FROM monitoring_checks
             WHERE website_id = %s
             ORDER BY checked_at DESC;
@@ -349,6 +417,7 @@ def get_monitoring_history(website_id: int):
         checks = []
 
         for row in rows:
+
             checks.append({
                 "id": row[0],
                 "checked_at": row[1],
@@ -364,14 +433,17 @@ def get_monitoring_history(website_id: int):
         }
 
     except Exception:
+
         raise HTTPException(
             status_code=500,
             detail="Could not retrieve monitoring history."
         )
 
     finally:
+
         if conn:
             conn.close()
+
 
 @app.get("/monitors/{website_id}/stats")
 def get_monitoring_stats(website_id: int):
@@ -379,6 +451,7 @@ def get_monitoring_stats(website_id: int):
     conn = None
 
     try:
+
         conn = get_connection()
         cursor = conn.cursor()
 
@@ -394,6 +467,7 @@ def get_monitoring_stats(website_id: int):
         website = cursor.fetchone()
 
         if website is None:
+
             raise HTTPException(
                 status_code=404,
                 detail="Website not found."
@@ -403,8 +477,12 @@ def get_monitoring_stats(website_id: int):
             """
             SELECT
                 COUNT(*),
-                COUNT(*) FILTER (WHERE is_successful = TRUE),
-                COUNT(*) FILTER (WHERE is_successful = FALSE),
+                COUNT(*) FILTER (
+                    WHERE is_successful = TRUE
+                ),
+                COUNT(*) FILTER (
+                    WHERE is_successful = FALSE
+                ),
                 AVG(response_time_ms),
                 MIN(response_time_ms),
                 MAX(response_time_ms)
@@ -420,17 +498,24 @@ def get_monitoring_stats(website_id: int):
         successful_checks = stats[1] or 0
         failed_checks = stats[2] or 0
 
-        average_response_time = round(
-            float(stats[3]), 2
-        ) if stats[3] is not None else 0
+        average_response_time = (
+            round(float(stats[3]), 2)
+            if stats[3] is not None
+            else 0
+        )
 
         minimum_response_time = stats[4] or 0
+
         maximum_response_time = stats[5] or 0
 
-        uptime_percentage = round(
-            (successful_checks / total_checks) * 100,
-            2
-        ) if total_checks > 0 else 0
+        uptime_percentage = (
+            round(
+                (successful_checks / total_checks) * 100,
+                2
+            )
+            if total_checks > 0
+            else 0
+        )
 
         cursor.execute(
             """
@@ -452,11 +537,28 @@ def get_monitoring_stats(website_id: int):
         current_status = "Unknown"
 
         if last_check:
-            if not last_check[2]:
+
+            status_code = last_check[0]
+            response_time_ms = last_check[1]
+
+            if status_code is None:
+
                 current_status = "Down"
-            elif last_check[1] >= 1000:
+
+            elif status_code >= 500:
+
+                current_status = "Down"
+
+            elif 400 <= status_code < 500:
+
                 current_status = "Degraded"
+
+            elif response_time_ms >= 2000:
+
+                current_status = "Degraded"
+
             else:
+
                 current_status = "Healthy"
 
         cursor.close()
@@ -479,27 +581,96 @@ def get_monitoring_stats(website_id: int):
                     "is_successful": last_check[2],
                     "checked_at": last_check[3]
                 }
-                if last_check else None
+                if last_check
+                else None
             )
         }
 
     except HTTPException:
+
         raise
 
     except Exception:
+
         raise HTTPException(
             status_code=500,
             detail="Could not retrieve monitoring statistics."
         )
 
     finally:
+
         if conn:
             conn.close()
 
+
+@app.delete("/monitors/{website_id}")
+def remove_monitor(website_id: int):
+
+    conn = None
+
+    try:
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            UPDATE websites
+            SET is_active = FALSE
+            WHERE id = %s AND is_active = TRUE
+            RETURNING id, url;
+            """,
+            (website_id,)
+        )
+
+        result = cursor.fetchone()
+
+        if result is None:
+
+            cursor.close()
+            conn.close()
+
+            raise HTTPException(
+                status_code=404,
+                detail="Active monitor not found."
+            )
+
+        conn.commit()
+
+        cursor.close()
+
+        return {
+            "message": "Website removed from monitoring",
+            "id": result[0],
+            "url": result[1]
+        }
+
+    except HTTPException:
+
+        raise
+
+    except Exception:
+
+        if conn:
+            conn.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail="Could not remove website from monitoring."
+        )
+
+    finally:
+
+        if conn:
+            conn.close()
+
+
 def automatic_monitoring():
+
     while True:
 
         try:
+
             conn = get_connection()
             cursor = conn.cursor()
 
@@ -519,6 +690,7 @@ def automatic_monitoring():
             for website_id, url in websites:
 
                 try:
+
                     start_time = time.perf_counter()
 
                     response = httpx.get(
@@ -534,7 +706,9 @@ def automatic_monitoring():
                     )
 
                     status_code = response.status_code
-                    is_successful = status_code < 400
+
+                    is_successful = status_code < 500
+
                     error_message = None
 
                 except httpx.RequestError as error:
@@ -546,7 +720,9 @@ def automatic_monitoring():
                     )
 
                     status_code = None
+
                     is_successful = False
+
                     error_message = str(error)
 
                 conn = get_connection()
@@ -573,11 +749,16 @@ def automatic_monitoring():
                 )
 
                 conn.commit()
+
                 cursor.close()
                 conn.close()
 
         except Exception as error:
-            print("Automatic monitoring:", error)
+
+            print(
+                "Automatic monitoring:",
+                error
+            )
 
         time.sleep(60)
 
