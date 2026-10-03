@@ -1,12 +1,14 @@
-import time
+import ipaddress
+import socket
 import threading
+import time
 from urllib.parse import urlparse
 
 import httpx
 from bs4 import BeautifulSoup
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 from backend.database.database import get_connection
 
@@ -20,6 +22,104 @@ class AnalyzeRequest(BaseModel):
 
 class MonitorRequest(BaseModel):
     url: str
+
+
+def normalize_url(url: str) -> str:
+    url = url.strip()
+
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+
+    return url
+
+
+def validate_target_url(url: str) -> str:
+    url = normalize_url(url)
+
+    parsed_url = urlparse(url)
+
+    if parsed_url.scheme not in ("http", "https"):
+        raise HTTPException(
+            status_code=400,
+            detail="Only HTTP and HTTPS URLs are supported."
+        )
+
+    if not parsed_url.hostname:
+        raise HTTPException(
+            status_code=400,
+            detail="Please enter a valid website URL."
+        )
+
+    hostname = parsed_url.hostname.strip().lower().rstrip(".")
+
+    blocked_hostnames = {
+        "localhost",
+        "localhost.localdomain",
+        "0.0.0.0",
+        "127.0.0.1",
+        "::1",
+    }
+
+    if hostname in blocked_hostnames:
+        raise HTTPException(
+            status_code=400,
+            detail="Local or internal destinations are not allowed."
+        )
+
+    try:
+        host_ip = ipaddress.ip_address(hostname)
+
+        if (
+            host_ip.is_private
+            or host_ip.is_loopback
+            or host_ip.is_link_local
+            or host_ip.is_reserved
+            or host_ip.is_multicast
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Private or internal destinations are not allowed."
+            )
+
+    except ValueError:
+        try:
+            resolved_addresses = socket.getaddrinfo(
+                hostname,
+                None,
+                type=socket.SOCK_STREAM
+            )
+
+        except socket.gaierror:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not resolve the target hostname."
+            )
+
+        for address in resolved_addresses:
+
+            resolved_ip = address[4][0]
+
+            try:
+                resolved_ip_obj = ipaddress.ip_address(
+                    resolved_ip
+                )
+
+            except ValueError:
+                continue
+
+            if (
+                resolved_ip_obj.is_private
+                or resolved_ip_obj.is_loopback
+                or resolved_ip_obj.is_link_local
+                or resolved_ip_obj.is_reserved
+                or resolved_ip_obj.is_multicast
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="The target resolves to a private or internal address."
+                )
+
+    return url
 
 
 @app.get("/")
@@ -37,25 +137,17 @@ def health_check():
 @app.post("/analyze")
 def analyze_website(request: AnalyzeRequest):
 
-    url = request.url.strip()
-
-    if not url.startswith(("http://", "https://")):
-        url = "https://" + url
+    url = validate_target_url(request.url)
 
     parsed_url = urlparse(url)
 
-    if not parsed_url.netloc:
-        raise HTTPException(
-            status_code=400,
-            detail="Please enter a valid website URL."
-        )
-
     try:
+
         start_time = time.perf_counter()
 
         response = httpx.get(
             url,
-            follow_redirects=True,
+            follow_redirects=False,
             timeout=10
         )
 
@@ -81,6 +173,7 @@ def analyze_website(request: AnalyzeRequest):
             )
 
             if soup.title:
+
                 page_title = soup.title.get_text(
                     strip=True
                 )
@@ -95,6 +188,7 @@ def analyze_website(request: AnalyzeRequest):
         }
 
     except httpx.RequestError:
+
         raise HTTPException(
             status_code=502,
             detail="Could not reach the website."
@@ -104,23 +198,14 @@ def analyze_website(request: AnalyzeRequest):
 @app.post("/monitor")
 def add_to_monitor(request: MonitorRequest):
 
-    url = request.url.strip()
-
-    if not url.startswith(("http://", "https://")):
-        url = "https://" + url
-
-    parsed_url = urlparse(url)
-
-    if not parsed_url.netloc:
-        raise HTTPException(
-            status_code=400,
-            detail="Please enter a valid website URL."
-        )
+    url = validate_target_url(request.url)
 
     conn = None
 
     try:
+
         conn = get_connection()
+
         cursor = conn.cursor()
 
         cursor.execute(
@@ -142,13 +227,16 @@ def add_to_monitor(request: MonitorRequest):
             if is_active:
 
                 cursor.close()
-                conn.close()
 
                 return {
-                    "message": "Website is already being monitored",
-                    "id": website_id,
-                    "url": url,
-                    "is_active": True
+                    "message":
+                        "Website is already being monitored",
+                    "id":
+                        website_id,
+                    "url":
+                        url,
+                    "is_active":
+                        True
                 }
 
             cursor.execute(
@@ -156,7 +244,10 @@ def add_to_monitor(request: MonitorRequest):
                 UPDATE websites
                 SET is_active = TRUE
                 WHERE id = %s
-                RETURNING id, url, created_at, is_active;
+                RETURNING id,
+                          url,
+                          created_at,
+                          is_active;
                 """,
                 (website_id,)
             )
@@ -164,21 +255,30 @@ def add_to_monitor(request: MonitorRequest):
             result = cursor.fetchone()
 
             conn.commit()
+
             cursor.close()
 
             return {
-                "message": "Website added back to monitoring",
-                "id": result[0],
-                "url": result[1],
-                "created_at": result[2],
-                "is_active": result[3]
+                "message":
+                    "Website added back to monitoring",
+                "id":
+                    result[0],
+                "url":
+                    result[1],
+                "created_at":
+                    result[2],
+                "is_active":
+                    result[3]
             }
 
         cursor.execute(
             """
             INSERT INTO websites (url)
             VALUES (%s)
-            RETURNING id, url, created_at, is_active;
+            RETURNING id,
+                      url,
+                      created_at,
+                      is_active;
             """,
             (url,)
         )
@@ -186,15 +286,25 @@ def add_to_monitor(request: MonitorRequest):
         result = cursor.fetchone()
 
         conn.commit()
+
         cursor.close()
 
         return {
-            "message": "Website added to monitoring",
-            "id": result[0],
-            "url": result[1],
-            "created_at": result[2],
-            "is_active": result[3]
+            "message":
+                "Website added to monitoring",
+            "id":
+                result[0],
+            "url":
+                result[1],
+            "created_at":
+                result[2],
+            "is_active":
+                result[3]
         }
+
+    except HTTPException:
+
+        raise
 
     except Exception:
 
@@ -218,12 +328,17 @@ def get_monitors():
     conn = None
 
     try:
+
         conn = get_connection()
+
         cursor = conn.cursor()
 
         cursor.execute(
             """
-            SELECT id, url, created_at, is_active
+            SELECT id,
+                   url,
+                   created_at,
+                   is_active
             FROM websites
             WHERE is_active = TRUE
             ORDER BY created_at DESC;
@@ -238,12 +353,14 @@ def get_monitors():
 
         for row in rows:
 
-            monitors.append({
-                "id": row[0],
-                "url": row[1],
-                "created_at": row[2],
-                "is_active": row[3]
-            })
+            monitors.append(
+                {
+                    "id": row[0],
+                    "url": row[1],
+                    "created_at": row[2],
+                    "is_active": row[3]
+                }
+            )
 
         return {
             "monitors": monitors
@@ -270,13 +387,15 @@ def check_website(website_id: int):
     try:
 
         conn = get_connection()
+
         cursor = conn.cursor()
 
         cursor.execute(
             """
             SELECT id, url
             FROM websites
-            WHERE id = %s AND is_active = TRUE;
+            WHERE id = %s
+              AND is_active = TRUE;
             """,
             (website_id,)
         )
@@ -290,7 +409,9 @@ def check_website(website_id: int):
                 detail="Website not found."
             )
 
-        url = website[1]
+        url = validate_target_url(
+            website[1]
+        )
 
         start_time = time.perf_counter()
 
@@ -298,7 +419,7 @@ def check_website(website_id: int):
 
             response = httpx.get(
                 url,
-                follow_redirects=True,
+                follow_redirects=False,
                 timeout=10
             )
 
@@ -356,13 +477,20 @@ def check_website(website_id: int):
         cursor.close()
 
         return {
-            "website_id": website_id,
-            "url": url,
-            "status_code": status_code,
-            "response_time_ms": response_time_ms,
-            "is_successful": is_successful,
-            "checked_at": check[1],
-            "error_message": error_message
+            "website_id":
+                website_id,
+            "url":
+                url,
+            "status_code":
+                status_code,
+            "response_time_ms":
+                response_time_ms,
+            "is_successful":
+                is_successful,
+            "checked_at":
+                check[1],
+            "error_message":
+                error_message
         }
 
     except HTTPException:
@@ -386,13 +514,16 @@ def check_website(website_id: int):
 
 
 @app.get("/monitors/{website_id}/checks")
-def get_monitoring_history(website_id: int):
+def get_monitoring_history(
+    website_id: int
+):
 
     conn = None
 
     try:
 
         conn = get_connection()
+
         cursor = conn.cursor()
 
         cursor.execute(
@@ -418,18 +549,28 @@ def get_monitoring_history(website_id: int):
 
         for row in rows:
 
-            checks.append({
-                "id": row[0],
-                "checked_at": row[1],
-                "status_code": row[2],
-                "response_time_ms": row[3],
-                "is_successful": row[4],
-                "error_message": row[5]
-            })
+            checks.append(
+                {
+                    "id":
+                        row[0],
+                    "checked_at":
+                        row[1],
+                    "status_code":
+                        row[2],
+                    "response_time_ms":
+                        row[3],
+                    "is_successful":
+                        row[4],
+                    "error_message":
+                        row[5]
+                }
+            )
 
         return {
-            "website_id": website_id,
-            "checks": checks
+            "website_id":
+                website_id,
+            "checks":
+                checks
         }
 
     except Exception:
@@ -446,13 +587,16 @@ def get_monitoring_history(website_id: int):
 
 
 @app.get("/monitors/{website_id}/stats")
-def get_monitoring_stats(website_id: int):
+def get_monitoring_stats(
+    website_id: int
+):
 
     conn = None
 
     try:
 
         conn = get_connection()
+
         cursor = conn.cursor()
 
         cursor.execute(
@@ -495,22 +639,38 @@ def get_monitoring_stats(website_id: int):
         stats = cursor.fetchone()
 
         total_checks = stats[0] or 0
-        successful_checks = stats[1] or 0
-        failed_checks = stats[2] or 0
+
+        successful_checks = (
+            stats[1] or 0
+        )
+
+        failed_checks = (
+            stats[2] or 0
+        )
 
         average_response_time = (
-            round(float(stats[3]), 2)
+            round(
+                float(stats[3]),
+                2
+            )
             if stats[3] is not None
             else 0
         )
 
-        minimum_response_time = stats[4] or 0
+        minimum_response_time = (
+            stats[4] or 0
+        )
 
-        maximum_response_time = stats[5] or 0
+        maximum_response_time = (
+            stats[5] or 0
+        )
 
         uptime_percentage = (
             round(
-                (successful_checks / total_checks) * 100,
+                (
+                    successful_checks /
+                    total_checks
+                ) * 100,
                 2
             )
             if total_checks > 0
@@ -539,7 +699,10 @@ def get_monitoring_stats(website_id: int):
         if last_check:
 
             status_code = last_check[0]
-            response_time_ms = last_check[1]
+
+            response_time_ms = (
+                last_check[1]
+            )
 
             if status_code is None:
 
@@ -564,26 +727,41 @@ def get_monitoring_stats(website_id: int):
         cursor.close()
 
         return {
-            "website_id": website_id,
-            "url": website[0],
-            "current_status": current_status,
-            "uptime_percentage": uptime_percentage,
-            "total_checks": total_checks,
-            "successful_checks": successful_checks,
-            "failed_checks": failed_checks,
-            "average_response_time_ms": average_response_time,
-            "minimum_response_time_ms": minimum_response_time,
-            "maximum_response_time_ms": maximum_response_time,
-            "last_check": (
-                {
-                    "status_code": last_check[0],
-                    "response_time_ms": last_check[1],
-                    "is_successful": last_check[2],
-                    "checked_at": last_check[3]
-                }
-                if last_check
-                else None
-            )
+            "website_id":
+                website_id,
+            "url":
+                website[0],
+            "current_status":
+                current_status,
+            "uptime_percentage":
+                uptime_percentage,
+            "total_checks":
+                total_checks,
+            "successful_checks":
+                successful_checks,
+            "failed_checks":
+                failed_checks,
+            "average_response_time_ms":
+                average_response_time,
+            "minimum_response_time_ms":
+                minimum_response_time,
+            "maximum_response_time_ms":
+                maximum_response_time,
+            "last_check":
+                (
+                    {
+                        "status_code":
+                            last_check[0],
+                        "response_time_ms":
+                            last_check[1],
+                        "is_successful":
+                            last_check[2],
+                        "checked_at":
+                            last_check[3]
+                    }
+                    if last_check
+                    else None
+                )
         }
 
     except HTTPException:
@@ -604,20 +782,24 @@ def get_monitoring_stats(website_id: int):
 
 
 @app.delete("/monitors/{website_id}")
-def remove_monitor(website_id: int):
+def remove_monitor(
+    website_id: int
+):
 
     conn = None
 
     try:
 
         conn = get_connection()
+
         cursor = conn.cursor()
 
         cursor.execute(
             """
             UPDATE websites
             SET is_active = FALSE
-            WHERE id = %s AND is_active = TRUE
+            WHERE id = %s
+              AND is_active = TRUE
             RETURNING id, url;
             """,
             (website_id,)
@@ -626,9 +808,6 @@ def remove_monitor(website_id: int):
         result = cursor.fetchone()
 
         if result is None:
-
-            cursor.close()
-            conn.close()
 
             raise HTTPException(
                 status_code=404,
@@ -640,9 +819,12 @@ def remove_monitor(website_id: int):
         cursor.close()
 
         return {
-            "message": "Website removed from monitoring",
-            "id": result[0],
-            "url": result[1]
+            "message":
+                "Website removed from monitoring",
+            "id":
+                result[0],
+            "url":
+                result[1]
         }
 
     except HTTPException:
@@ -672,6 +854,7 @@ def automatic_monitoring():
         try:
 
             conn = get_connection()
+
             cursor = conn.cursor()
 
             cursor.execute(
@@ -685,38 +868,99 @@ def automatic_monitoring():
             websites = cursor.fetchall()
 
             cursor.close()
+
             conn.close()
 
-            for website_id, url in websites:
+            for website_id, stored_url in websites:
 
                 try:
 
-                    start_time = time.perf_counter()
+                    url = validate_target_url(
+                        stored_url
+                    )
+
+                except HTTPException as error:
+
+                    conn = get_connection()
+
+                    cursor = conn.cursor()
+
+                    cursor.execute(
+                        """
+                        INSERT INTO monitoring_checks (
+                            website_id,
+                            status_code,
+                            response_time_ms,
+                            is_successful,
+                            error_message
+                        )
+                        VALUES (
+                            %s,
+                            NULL,
+                            %s,
+                            FALSE,
+                            %s
+                        );
+                        """,
+                        (
+                            website_id,
+                            0,
+                            error.detail
+                        )
+                    )
+
+                    conn.commit()
+
+                    cursor.close()
+
+                    conn.close()
+
+                    continue
+
+                try:
+
+                    start_time = (
+                        time.perf_counter()
+                    )
 
                     response = httpx.get(
                         url,
-                        follow_redirects=True,
+                        follow_redirects=False,
                         timeout=10
                     )
 
-                    end_time = time.perf_counter()
-
-                    response_time_ms = round(
-                        (end_time - start_time) * 1000
+                    end_time = (
+                        time.perf_counter()
                     )
 
-                    status_code = response.status_code
+                    response_time_ms = round(
+                        (
+                            end_time -
+                            start_time
+                        ) * 1000
+                    )
 
-                    is_successful = status_code < 500
+                    status_code = (
+                        response.status_code
+                    )
+
+                    is_successful = (
+                        status_code < 500
+                    )
 
                     error_message = None
 
                 except httpx.RequestError as error:
 
-                    end_time = time.perf_counter()
+                    end_time = (
+                        time.perf_counter()
+                    )
 
                     response_time_ms = round(
-                        (end_time - start_time) * 1000
+                        (
+                            end_time -
+                            start_time
+                        ) * 1000
                     )
 
                     status_code = None
@@ -726,6 +970,7 @@ def automatic_monitoring():
                     error_message = str(error)
 
                 conn = get_connection()
+
                 cursor = conn.cursor()
 
                 cursor.execute(
@@ -737,7 +982,13 @@ def automatic_monitoring():
                         is_successful,
                         error_message
                     )
-                    VALUES (%s, %s, %s, %s, %s);
+                    VALUES (
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s
+                    );
                     """,
                     (
                         website_id,
@@ -751,6 +1002,7 @@ def automatic_monitoring():
                 conn.commit()
 
                 cursor.close()
+
                 conn.close()
 
         except Exception as error:
